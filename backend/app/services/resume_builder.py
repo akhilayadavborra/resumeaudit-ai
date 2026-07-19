@@ -8,9 +8,11 @@ import re
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from app.services.keyword_extractor import extract_skills
@@ -75,9 +77,20 @@ def generate_docx_resume(data) -> bytes:
         run.bold = True
         run.font.size = Pt(12)
         p.paragraph_format.space_before = Pt(12)
-        p.paragraph_format.space_after = Pt(4)
-        # Simple bottom border effect using underline as an ATS-safe alternative to a table border
-        run.underline = True
+        p.paragraph_format.space_after = Pt(3)
+
+        # Adds a real horizontal divider line under the header (a bottom
+        # border on the paragraph itself) — the standard professional
+        # resume convention, instead of just relying on blank spacing.
+        p_pr = p._p.get_or_add_pPr()
+        p_bdr = OxmlElement("w:pBdr")
+        bottom_border = OxmlElement("w:bottom")
+        bottom_border.set(qn("w:val"), "single")
+        bottom_border.set(qn("w:sz"), "8")
+        bottom_border.set(qn("w:space"), "1")
+        bottom_border.set(qn("w:color"), "444444")
+        p_bdr.append(bottom_border)
+        p_pr.append(p_bdr)
 
     if data.summary:
         add_section_header("Professional Summary")
@@ -138,7 +151,7 @@ def generate_pdf_resume(data) -> bytes:
 
     name_style = ParagraphStyle("NameStyle", parent=styles["Title"], fontSize=20, alignment=1, spaceAfter=4)
     contact_style = ParagraphStyle("ContactStyle", parent=styles["Normal"], alignment=1, fontSize=10, textColor="#444444")
-    section_style = ParagraphStyle("SectionStyle", parent=styles["Heading2"], fontSize=12, spaceBefore=14, spaceAfter=4, textColor="#1a1a1a")
+    section_style = ParagraphStyle("SectionStyle", parent=styles["Heading2"], fontSize=12, spaceBefore=14, spaceAfter=2, textColor="#1a1a1a")
     body_style = ParagraphStyle("BodyStyle", parent=styles["BodyText"], fontSize=10, leading=14)
     bold_line_style = ParagraphStyle("BoldLine", parent=body_style, fontName="Helvetica-Bold")
 
@@ -149,10 +162,12 @@ def generate_pdf_resume(data) -> bytes:
 
     if data.summary:
         elements.append(Paragraph("PROFESSIONAL SUMMARY", section_style))
+        elements.append(HRFlowable(width="100%", thickness=0.75, color="#444444", spaceAfter=6))
         elements.append(Paragraph(data.summary, body_style))
 
     if data.experience:
         elements.append(Paragraph("EXPERIENCE", section_style))
+        elements.append(HRFlowable(width="100%", thickness=0.75, color="#444444", spaceAfter=6))
         for exp in data.experience:
             elements.append(Paragraph(f"{exp.title} — {exp.company}", bold_line_style))
             elements.append(Paragraph(f"{exp.start_date} - {exp.end_date}", body_style))
@@ -162,6 +177,7 @@ def generate_pdf_resume(data) -> bytes:
 
     if data.projects:
         elements.append(Paragraph("PROJECTS", section_style))
+        elements.append(HRFlowable(width="100%", thickness=0.75, color="#444444", spaceAfter=6))
         for proj in data.projects:
             elements.append(Paragraph(proj.name, bold_line_style))
             if proj.description:
@@ -172,6 +188,7 @@ def generate_pdf_resume(data) -> bytes:
 
     if data.education:
         elements.append(Paragraph("EDUCATION", section_style))
+        elements.append(HRFlowable(width="100%", thickness=0.75, color="#444444", spaceAfter=6))
         for edu in data.education:
             elements.append(Paragraph(f"{edu.degree} — {edu.school}", bold_line_style))
             if edu.start_date or edu.end_date:
@@ -179,11 +196,13 @@ def generate_pdf_resume(data) -> bytes:
 
     if data.skills:
         elements.append(Paragraph("SKILLS", section_style))
+        elements.append(HRFlowable(width="100%", thickness=0.75, color="#444444", spaceAfter=6))
         ordered_skills = _prioritize_skills(data.skills, data.job_description)
         elements.append(Paragraph(", ".join(ordered_skills), body_style))
 
     if data.certifications:
         elements.append(Paragraph("CERTIFICATIONS", section_style))
+        elements.append(HRFlowable(width="100%", thickness=0.75, color="#444444", spaceAfter=6))
         elements.append(ListFlowable([ListItem(Paragraph(c, body_style)) for c in data.certifications], bulletType="bullet"))
 
     doc.build(elements)
