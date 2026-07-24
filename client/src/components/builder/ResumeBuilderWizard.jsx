@@ -19,7 +19,6 @@ export default function ResumeBuilderWizard() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [linkedin, setLinkedin] = useState("");
-  const [summary, setSummary] = useState("");
   const [experience, setExperience] = useState([{ company: "", title: "", start_date: "", end_date: "Present", bullets: [""] }]);
   const [education, setEducation] = useState([{ school: "", degree: "", start_date: "", end_date: "" }]);
   const [skillInput, setSkillInput] = useState("");
